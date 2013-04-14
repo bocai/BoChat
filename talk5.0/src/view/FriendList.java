@@ -54,17 +54,7 @@ public class FriendList extends JFrame implements Runnable, ActionListener, Mous
 			public void windowClosing(WindowEvent e) {
 				isRunning = false;
 
-				HashMap<String, UdpClient> map = UDPClientManage.hmSudp;
-				Iterator<Entry<String, UdpClient>> iter = map.entrySet()
-						.iterator();
-
-				while (iter.hasNext()) {
-					Entry<String, UdpClient> entry = iter.next();
-					// String addr = entry.getKey();
-					UdpClient uc = (UdpClient) entry.getValue();
-					// print("Send OffMsg to "+ uc.nickName);
-					MainManage.sendOffLineMsg(uc);
-				}
+				UDPClientManage.offLine();
 				// setVisible(false);
 				MainManage.noExit = false;
 				// MainManage.stopFriThrea();
@@ -131,7 +121,7 @@ public class FriendList extends JFrame implements Runnable, ActionListener, Mous
 	}
 
 	public static void print(Object o) {
-		System.out.println(o);
+	//	System.out.println(o);
 	}
 
 	@Override

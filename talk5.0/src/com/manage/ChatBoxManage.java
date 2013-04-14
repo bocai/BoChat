@@ -20,7 +20,10 @@ public class ChatBoxManage {
 	}
 
 	public static void addHmLabel(String str, JLabel jl) {
-		hmLabel.put(str, jl);
+		synchronized(hmLabel){
+			hmLabel.put(str, jl);
+		}
+		
 	}
 
 	public static void print(Object o) {
@@ -32,17 +35,26 @@ public class ChatBoxManage {
 	}
 
 	public static void addBoxByJLabel(JLabel jl, ChatBox cb) {
-		hmjc.put(jl, cb);
+		synchronized(hmjc){
+			hmjc.put(jl, cb);
+		}
+		
 	}
 
 	public static void delBoxByLabel(JLabel jl) {
 		print("remove box ByLb ");
-		hmjc.remove(jl);
+		synchronized(hmjc){
+			hmjc.remove(jl);
+		}
+		
 	}
 
 	public static void addBoxByIp(String ipStr, ChatBox cb) {
 		print("add box ByIp " + ipStr);
-		hmsc.put(ipStr, cb);
+		synchronized(hmjc){
+			hmsc.put(ipStr, cb);
+		}
+		
 	}
 
 	public static ChatBox getBoxByIp(String ipStr) {
@@ -52,7 +64,10 @@ public class ChatBoxManage {
 
 	public static void delBoxByIp(String ipStr) {
 		print("del box ByIp " + ipStr);
-		hmsc.remove(ipStr);
+		synchronized(hmjc){
+			hmsc.remove(ipStr);
+		}
+		
 
 	}
 

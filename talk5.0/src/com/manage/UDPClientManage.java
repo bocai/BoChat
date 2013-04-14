@@ -1,6 +1,8 @@
 package com.manage;
 
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
 
 import javax.swing.JLabel;
 
@@ -46,6 +48,22 @@ public class UDPClientManage {
 	public static void delUdpClient(String ipStr) {
 		synchronized (hmSudp) {
 			hmSudp.remove(ipStr);
+		}
+	}
+	public static void offLine() {
+		//HashMap<String, UdpClient> map = hmSudp;
+		synchronized (hmSudp) {
+			Iterator<Entry<String, UdpClient>> iter = hmSudp.entrySet().iterator();
+
+			while (iter.hasNext()) {
+				Entry<String, UdpClient> entry = iter.next();
+				String addr = entry.getKey();
+				UdpClient uc = (UdpClient) entry.getValue();
+				// print("Send OffMsg to "+ uc.nickName);
+				if(uc != null) {
+					MainManage.sendOffLineMsg(uc);
+				}
+			}
 		}
 	}
 }

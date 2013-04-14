@@ -273,29 +273,31 @@ public class TcpClient extends JFrame implements Runnable, ActionListener, Mouse
 		cb = chatBox;
 	}
 
-public void connect() {
+public Socket connect() {
 		if (sk != null)
-			return;
+			return sk;
 		
 		try {
 			String ipStr = cb.getClientAddr().toString();
 			ipStr = ipStr.substring(1);
 			if(ipStr.equals(MainManage.getUdpAddr().toString()) == true) {
 				MainManage.print("can not connect self" + ipStr);
-				return;
+				return null;
 			}
 			sk = new Socket(ipStr, TcpServ.getPort());
 		} catch (UnknownHostException e) {
 	
-			e.printStackTrace();
+			//e.printStackTrace();
+			return null;
 		} catch (IOException e) {
-	
-			e.printStackTrace();
+			//e.printStackTrace();
+			return null;
 		}
 		initStream();
 		recvThread = new Thread(this);
 		recvThread.start();
 		TCPClientManage.addTClient(sk.getInetAddress().toString(), this);
+		return sk;
 }
 
 	public synchronized void sendFiles() {
@@ -398,7 +400,7 @@ public void connect() {
 	}
 
 	@Override
-	public void run() {
+	public synchronized void run() {
 		if (dis == null)
 			return;
 		MainManage.print("TcpClient recv start:");
@@ -481,7 +483,7 @@ public void connect() {
 
 		}
 		close();
-		MainManage.print("recv thr end");
+		MainManage.print("recv thread end");
 	}
 
 	@Override

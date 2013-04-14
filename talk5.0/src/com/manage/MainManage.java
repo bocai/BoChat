@@ -4,6 +4,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.*;
+
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import view.FriendList;
 
@@ -154,7 +156,7 @@ public class MainManage implements Runnable {
 		udpSendMsgObj(m, uc.clientAddr);
 	}
 
-	public static void sendReqFileMsg(UdpClient uc) {
+	public static void reqSendFileMsg(UdpClient uc) {
 		MsgObj m = new MsgObj();
 		m.setMsgtype(MsgType.MSG_TCP_FILE);
 		m.setSender(nickname);
@@ -166,6 +168,15 @@ public class MainManage implements Runnable {
 	public static void sendConfirmFileMsg(UdpClient uc, String str) {
 		MsgObj m = new MsgObj();
 		m.setMsgtype(MsgType.MSG_TCP_CONFIRM);
+		m.setSender(nickname);
+		m.setGetter(uc.nickName);
+		m.setContent(str);
+
+		udpSendMsgObj(m, uc.clientAddr);
+	}
+	public static void sendOnLineMsg(UdpClient uc, String str) {
+		MsgObj m = new MsgObj();
+		m.setMsgtype(MsgType.MSG_ONLINE);
 		m.setSender(nickname);
 		m.setGetter(uc.nickName);
 		m.setContent(str);
@@ -192,13 +203,22 @@ public class MainManage implements Runnable {
 
 	public static void print(Object o) {
 
-		System.out.println(o);
+		//System.out.println(o);
 	}
+	
+	public static void cleanClient(String addrStr) {
+		JLabel jl = ChatBoxManage.getHmLabel(addrStr);
+		FriendList.getFriendListInstance().delLabel(jl);
 
+		ChatBoxManage.delBoxByIp(addrStr);
+		UDPClientManage.delUdpClient(addrStr);
+		UDPClientManage.delUdpClientbByJlabel(jl);
+		TCPClientManage.deleteOne(addrStr);
+	}
 	@Override
 	public void run() {
 		// print("udp serv start recv");
-		while (noExit == true) {
+		while (noExit) {
 			byte[] by = new byte[1024 * 1024];
 			// try {
 			DatagramPacket dp = new DatagramPacket(by, by.length);

@@ -33,7 +33,7 @@ public class UdpMsgParseThread implements Runnable {
 	}
 
 	void print(Object o) {
-		System.out.println(o);
+		//System.out.println(o);
 	}
 
 	void responseMsg(MsgObj m) {
@@ -60,7 +60,9 @@ public class UdpMsgParseThread implements Runnable {
 		ChatBoxManage.addHmLabel(addrStr, jl); // to del JLabel
 		UDPClientManage.addHmJlb(jl, uc); // through jl to visit ChatBox
 		UDPClientManage.addUdpClient(addrStr, uc); // to del UdpClient
-
+		if(addrStr.substring(1).equals(MainManage.getHostIp()) == false) { //排除自己
+			new Thread(uc).start();
+		}
 		print("dealConnect end; udpClient size " + UDPClientManage.hmJlb.size());
 	}
 
@@ -81,12 +83,14 @@ public class UdpMsgParseThread implements Runnable {
 			e.printStackTrace();
 		}
 
-		if (m.getGetter() == null
+		if (m.getGetter() == null  //broadcase
 				|| true == MainManage.nickname.equalsIgnoreCase(m.getGetter())) {
 			addrStr = dp.getAddress().toString();
 
 			uc = UDPClientManage.getUdpClient(addrStr);
-
+			if(uc != null) {
+				uc.setUdpLastRecvTime(System.currentTimeMillis());
+			}
 			switch (m.getMsgtype()) {
 			case MsgType.MSG_NORMAL:
 				print("Normal Msg");
@@ -111,7 +115,12 @@ public class UdpMsgParseThread implements Runnable {
 				break;
 
 			case MsgType.MSG_ONLINE:
-
+				if(uc != null) {
+					uc.isOnLine = true;
+					if(m.getContent() == null) {
+						MainManage.sendOnLineMsg(uc, "ok");
+					}
+				}
 				print("Online msg");
 
 				break;
@@ -133,14 +142,14 @@ public class UdpMsgParseThread implements Runnable {
 				break;
 
 			case MsgType.MSG_OFFLINE:
+				if(null == uc) {
+					return;
+				}
+				
 				print("recv OffLineMsg");
-				JLabel jl = ChatBoxManage.getHmLabel(addrStr);
-				FriendList.getFriendListInstance().delLabel(jl);
-
-				ChatBoxManage.delBoxByIp(addrStr);
-				UDPClientManage.delUdpClient(addrStr);
-				UDPClientManage.delUdpClientbByJlabel(jl);
-
+				uc.isOnLine = false;
+				MainManage.cleanClient(addrStr);
+				
 				break;
 			case MsgType.MSG_TCP_FILE:
 				print("recv MSG_TCP_FILE");
@@ -174,7 +183,9 @@ public class UdpMsgParseThread implements Runnable {
 
 				if (m.getContent().equalsIgnoreCase(tcpClient.getRecvConfirm()) == true) {
 					
-					tcpClient.connect();
+					if(null == tcpClient.connect()) {
+						MainManage.cleanClient(addrStr);
+					}
 
 					try {
 						//print("sleep wait a min");
