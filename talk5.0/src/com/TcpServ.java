@@ -17,18 +17,19 @@ import com.manage.UDPClientManage;
 
 public class TcpServ implements Runnable {
 	ServerSocket ss = null;
-	private static short port = 8888;
+	private static int port = 8888;
 
 	public static void main(String[] args) {
 
 	}
 	public TcpServ() {
+		
 	}
-	public TcpServ(short port) {
+	public TcpServ(int port) {
 		this.port = port;
 	}
 	
-	public static short getPort() {
+	public static int getPort() {
 		return port;
 	}
 	@Override
@@ -51,12 +52,11 @@ public class TcpServ implements Runnable {
 				if (null == s)
 					continue;
 
-				
-				if(MainManage.getUdpAddr().equals(s.getInetAddress()) == true) 
-					continue;
+//				if(MainManage.getUdpAddr().equals(s.getInetAddress()) == true) 
+//					continue;
 				String inetAddrStr = s.getInetAddress().toString();
 				ChatBox cbx = ChatBoxManage.getBoxByIp(inetAddrStr);
-				if (null == cbx) {
+				if (null == cbx) { // first time
 					UdpClient uc = UDPClientManage.getUdpClient(inetAddrStr);
 					if (null == uc) {
 						continue;
@@ -66,6 +66,7 @@ public class TcpServ implements Runnable {
 
 					if (null == cbx) {
 						cbx = ChatBox.getChatBox(uc);
+						uc.chatBox = cbx;
 					}
 					ChatBoxManage.addBoxByJLabel(jlb, cbx);
 					ChatBoxManage.addBoxByIp(inetAddrStr, cbx);
@@ -73,25 +74,21 @@ public class TcpServ implements Runnable {
 
 				TcpClient tc = TCPClientManage.getTCPClient(inetAddrStr);
 				if (null == tc) {
-					MainManage.print("create tc");
-					tc = new TcpClient(s);
+					MainManage.print("create tc & start");
+					tc = new TcpClient();
 					cbx.tcpClient = tc;
-					tc.cb = cbx;
-					cbx.tcpClient = tc;
-					tc.recvThread = new Thread(tc);
-					tc.recvThread.start();
+					tc.cb = cbx;  //关联
+					
 					TCPClientManage.addTClient(inetAddrStr, tc);
-				} else {
-					MainManage.print("tc setSk");
-					tc.setSk(s);
+					//tc.recvThread = new Thread(tc);
+					//tc.recvThread.start();
+					
+				} 
+				//else {
 
-					if (false == tc.getThrIsRunning()) {
-						tc.recvThread = new Thread(tc);
-						tc.recvThread.start();
-					}
 					tc.setVisible(true);
-				}
-
+				//}
+				new Thread(tc.getRecvImpl(s)).start();
 			} catch (IOException e) {
 				MainManage.print("he is offline");
 				e.printStackTrace();

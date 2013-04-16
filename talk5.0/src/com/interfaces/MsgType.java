@@ -13,5 +13,6 @@ public interface MsgType {
 	public final short MSG_TCP_CONFIRM   	= 7; //确认接收
 	public final short MSG_TCP_RESPONSE  	= 8;
 	public final short MSG_TCP_CON_OK   	= 9;
+	public final short MSG_BE_READ_REV_DAT = 10;
 	
 }

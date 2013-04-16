@@ -43,8 +43,11 @@ public class ChatBox extends JFrame implements MouseListener {
 		this.udpClient = udpClient;
 		// tArea.setEditable(false);
 		setTitle("Chating with " + udpClient.nickName);
-		sendBtn = new JButton("send");
-		sendBtn.setBackground(Color.blue);
+	//	sendBtn = this.getImageBtn();
+		if(null == sendBtn) {
+			sendBtn = new JButton("send");
+		}
+		//sendBtn.setBackground(Color.blue);
 		// sendBtn = getImageBtn();
 
 		// sendBtn.setMargin(new Insets(0,0,0,0));
@@ -108,7 +111,8 @@ public class ChatBox extends JFrame implements MouseListener {
 		String str = tField.getText();
 		if (str == null || str.length() <= 0)
 			return;
-		appendTarea("(" + MainManage.getNickname() + ") : " + str);
+		appendTarea("(" + MainManage.getNickname() + ") : " 
+			+ System.getProperty("line.separator") + str);
 
 		sendStr(str);
 		tField.setText(""); // tField.setFocusable(true);
@@ -129,7 +133,7 @@ public class ChatBox extends JFrame implements MouseListener {
 
 	}
 
-	public void sendStr(String ts) {
+	private void sendStr(String ts) {
 
 		if (null == ts || ts.length() == 0)
 			return;
@@ -164,7 +168,8 @@ public class ChatBox extends JFrame implements MouseListener {
 	public void mouseClicked(MouseEvent e) {
 		if (e.getSource() == sendBtn) {
 			postMsg();
-		} else if (e.getSource() == sendFileBtn) {
+		} 
+		else if (e.getSource() == sendFileBtn) { // send file
 			// send files
 			MainManage.print("send file btn clicked");
 			if (tcpClient == null) {
@@ -186,7 +191,20 @@ public class ChatBox extends JFrame implements MouseListener {
 	@Override
 	public void mouseReleased(MouseEvent e) {
 		// TODO Auto-generated method stub
-
+//		String fileName = "haha";
+//		FileDialog fileDia = new FileDialog(this, "SAVE FILE", FileDialog.SAVE);
+//		fileDia.setDirectory("~/");
+//		fileDia.setFile(fileName);
+//		fileDia.setVisible(true);
+//		
+//		File file = null;
+//		if(fileDia.getFile() != null)
+//			fileName = fileDia.getFile();
+//		String dir = fileDia.getDirectory();
+//		if(null == dir)
+//			dir = "~/";
+//		System.out.println("Received File Name = " + fileName);
+//		file = new File(dir, fileName);
 	}
 
 	@Override

@@ -9,11 +9,18 @@ import view.ChatBox;
 import view.FriendList;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.net.DatagramPacket;
+import java.net.MalformedURLException;
+import java.util.StringTokenizer;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import java.io.FileInputStream;
 
 // Parse UDP packet
 public class UdpMsgParseThread implements Runnable {
@@ -32,10 +39,6 @@ public class UdpMsgParseThread implements Runnable {
 		return port;
 	}
 
-	void print(Object o) {
-		//System.out.println(o);
-	}
-
 	void responseMsg(MsgObj m) {
 		m.setSender(MainManage.nickname);
 		// m.setSender(m.getGetter());
@@ -44,7 +47,7 @@ public class UdpMsgParseThread implements Runnable {
 		MainManage.udpSendMsgObj(m, dp.getAddress());
 	}
 
-	void dealConnect(MsgObj m) {
+	private void dealConnectMsg(MsgObj m) {
 
 		uc = new UdpClient();
 		if (uc == null)
@@ -65,7 +68,118 @@ public class UdpMsgParseThread implements Runnable {
 		}
 		print("dealConnect end; udpClient size " + UDPClientManage.hmJlb.size());
 	}
+	
+	private void dealNormalMsg(MsgObj m) {
+		
+		ChatBox cb = uc.chatBox;
+		// firstRecv()
+		if (null == cb) { // first recv normal msg
+			cb = createBox();
 
+			// print("can not find chatBox in hashMap");
+		}
+		if (cb.isVisible() == false) {
+			uc.setRead(false);
+			// MainManage.getFriendListThread().resumeTr();
+			FriendList.getFriendListInstance().resumeTr();
+		}
+		cb.appendTarea("From " + m.getSender() + System.getProperty("line.separator") + m.getContent());
+		// print(m.getSender() + " say: " +
+		// m.getContent()+" from ("+addrStr+")");
+
+	}
+
+	private void dealRecvFileMsg(MsgObj m) {
+		
+		if (null == uc)
+			return;
+		print("content:" + m.getContent());
+		StringTokenizer str = new StringTokenizer(m.getContent(), ":");
+		String filename = str.nextToken();
+		if(null == filename) 
+			return;
+		int ret = JOptionPane.showConfirmDialog(null, "File: " + filename + " from "+ addrStr,//m.getContent(),
+				"确认接收文件吗？", JOptionPane.YES_NO_OPTION);
+		if (ret == JOptionPane.YES_OPTION) {
+
+			print("I accpet recv");
+			TcpClient tcpClient = TCPClientManage.getTCPClient(addrStr);
+			if (null == tcpClient) { // first time
+				ChatBox cb = uc.chatBox;
+				print("fist connetc tcp");
+				if (null == cb) { // first recv 
+					cb = createBox();
+					print("createBox");
+					uc.chatBox = cb;
+					// print("can not find chatBox in hashMap");
+				}
+				
+				tcpClient = new TcpClient();
+				tcpClient.setChatBox(cb);
+				cb.tcpClient = tcpClient;
+				TCPClientManage.addTClient(addrStr, tcpClient);
+				
+			}
+
+			int i = Integer.parseInt( str.nextToken() );
+			
+			if( true == tcpClient.setFilesRecv(filename, i) ) {
+
+				MainManage.sendConfirmFileMsg(uc, m.getContent());
+				print("ok i=" + i);
+			}
+			else {
+				MainManage.sendConfirmFileMsg(uc, null);
+			}
+			
+
+		} else if (ret == JOptionPane.NO_OPTION) {
+			print("I refuse recv");
+			MainManage.sendConfirmFileMsg(uc, null);
+		}
+
+	}
+	// start send file by Confirm msg
+	private void dealResponConfirmMsg (MsgObj m) { 
+		if (uc == null) {
+			return;
+		}
+		if(m.getContent() == null) {
+			print("content is null");
+			return;
+		}
+		print("content:" + m.getContent());
+		TcpClient tcpClient = TCPClientManage.getTCPClient(addrStr);
+		if (null == tcpClient) {
+			return;
+		}
+		
+		StringTokenizer content = new StringTokenizer(m.getContent(), ":");
+		String filenameStr = content.nextToken();
+		int i = Integer.parseInt( content.nextToken() );
+		String file_of_index = tcpClient.getFileName(i);
+		
+		print(filenameStr + " & begin send i=" + i + " "+ file_of_index  );
+		
+		if (filenameStr.equalsIgnoreCase(file_of_index) == true) {
+			
+			if(null == tcpClient.connectAndSendFile(uc, i)) {
+				//MainManage.cleanClient(addrStr);
+			}
+			
+		} else {
+			//tcpClient.sendFiles[i] = null;
+			print("he refuse files req");
+		}
+	}
+	private void playMsgSound() {
+		/* 由于声音的播放需要  java.applet.*; 或者sun.audio.*;较麻烦，因此先不弄了*/
+//		AudioClip aClip =  getAudioClip(getDocumentBase(),"sound/msg.wav");;
+//		if(aClip != null)
+//			aClip.play();
+		
+	}
+	
 	@Override
 	public void run() {
 
@@ -91,27 +205,15 @@ public class UdpMsgParseThread implements Runnable {
 			if(uc != null) {
 				uc.setUdpLastRecvTime(System.currentTimeMillis());
 			}
+			
 			switch (m.getMsgtype()) {
 			case MsgType.MSG_NORMAL:
 				print("Normal Msg");
 
 				if (null == uc)
 					return;
-				ChatBox cb = uc.chatBox;
-				// firstRecv()
-				if (null == cb) { // first recv normal msg
-					cb = createBox(cb);
-
-					// print("can not find chatBox in hashMap");
-				}
-				if (cb.isVisible() == false) {
-					uc.setRead(false);
-					// MainManage.getFriendListThread().resumeTr();
-					FriendList.getFriendListInstance().resumeTr();
-				}
-				cb.appendTarea(m.getSender() + " say: " + m.getContent());
-				// print(m.getSender() + " say: " +
-				// m.getContent()+" from ("+addrStr+")");
+				
+				dealNormalMsg(m);
 				break;
 
 			case MsgType.MSG_ONLINE:
@@ -130,7 +232,7 @@ public class UdpMsgParseThread implements Runnable {
 				print("recv connect msg");
 				// 处理connect
 				if (uc == null) {
-					dealConnect(m);
+					dealConnectMsg(m);
 				}
 				responseMsg(m);// cb.showWindow();
 				break;
@@ -138,7 +240,7 @@ public class UdpMsgParseThread implements Runnable {
 			case MsgType.MSG_RESPONSE:
 				print("recv response msg");
 				if (uc == null)
-					dealConnect(m);
+					dealConnectMsg(m);
 				break;
 
 			case MsgType.MSG_OFFLINE:
@@ -153,67 +255,28 @@ public class UdpMsgParseThread implements Runnable {
 				break;
 			case MsgType.MSG_TCP_FILE:
 				print("recv MSG_TCP_FILE");
-				
-				if (null == uc)
-					return;
-				int ret = JOptionPane.showConfirmDialog(null, "确认接收文件吗?",
-						"确认框", JOptionPane.YES_NO_OPTION);
-				if (ret == JOptionPane.YES_OPTION) {
-
-					print("I accpet recv");
-					MainManage.sendConfirmFileMsg(uc, m.getContent());
-
-				} else if (ret == JOptionPane.NO_OPTION) {
-					print("I refuse recv");
-					MainManage.sendConfirmFileMsg(uc,
-							(Integer.parseInt(m.getContent()) + 1) + "");
-				}
-
+				dealRecvFileMsg(m);
 				break;
 
 			case MsgType.MSG_TCP_CONFIRM:
 				print("recv MSG_TCP_CONFIRM");
-				if (uc == null) {
-					return;
-				}
-				TcpClient tcpClient = TCPClientManage.getTCPClient(addrStr);
-				if (null == tcpClient) {
-					return;
-				}
-
-				if (m.getContent().equalsIgnoreCase(tcpClient.getRecvConfirm()) == true) {
-					
-					if(null == tcpClient.connect()) {
-						MainManage.cleanClient(addrStr);
-					}
-
-					try {
-						//print("sleep wait a min");
-						Thread.sleep(100);
-					} catch (InterruptedException e) {
-						return;
-						//e.printStackTrace();
-					}
+				dealResponConfirmMsg(m);
 				
-					tcpClient.sendFiles();
-					print("send files end!");
-				} else {
-					print("he refuse files req");
-				}
-
+				break;
+			case MsgType.MSG_BE_READ_REV_DAT:
+				
 				break;
 			}
-
-			// print("sender " + m.getSender());
-			// print(Arrays.toString(by));
+			
 			// print("parse end! chatbox size " + ChatBoxManage.hmsc.size());
 			// print("-----------------------------------");
 			dp = null;
 		}
 	}
 
-	private ChatBox createBox(ChatBox cb) {
-		cb = ChatBox.getChatBox(uc);
+
+	private ChatBox createBox() {
+		ChatBox cb = ChatBox.getChatBox(uc);
 		cb.setClientAddr(uc.clientAddr);
 		uc.chatBox = cb;
 		ChatBoxManage.addBoxByIp(addrStr, cb);
@@ -221,4 +284,10 @@ public class UdpMsgParseThread implements Runnable {
 		// print("can not find chatBox in hashMap");
 		return cb;
 	}
+	
+
+	void print(Object o) {
+	//	System.out.println(o);
+	}
+
 }

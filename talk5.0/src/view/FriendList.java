@@ -92,7 +92,7 @@ public class FriendList extends JFrame implements Runnable, ActionListener, Mous
 			icon = new ImageIcon("image/qq.gif");
 		JLabel jl = new JLabel(uc.nickName, icon, JLabel.LEFT);
 		if (null == jl)
-			System.exit(1);
+			return null;
 
 		jl.setEnabled(true);
 		jl.addMouseListener(this);
@@ -120,9 +120,6 @@ public class FriendList extends JFrame implements Runnable, ActionListener, Mous
 		// setVisible(true);
 	}
 
-	public static void print(Object o) {
-	//	System.out.println(o);
-	}
 
 	@Override
 	public void mouseClicked(MouseEvent e) {
@@ -297,6 +294,11 @@ public class FriendList extends JFrame implements Runnable, ActionListener, Mous
 		synchronized (this) {
 			isRunning = false;
 		}
+	}
+
+	
+	public static void print(Object o) {
+	//	System.out.println(o);
 	}
 
 }

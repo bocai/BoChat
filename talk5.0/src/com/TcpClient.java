@@ -2,6 +2,8 @@ package com;
 
 import java.awt.CardLayout;
 import java.awt.Checkbox;
+import java.awt.Color;
+import java.awt.FileDialog;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -30,37 +32,34 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.ProgressMonitorInputStream;
 
 import com.manage.MainManage;
 import com.manage.TCPClientManage;
 import com.manage.UDPClientManage;
 
 import view.ChatBox;
-
-public class TcpClient extends JFrame implements Runnable, ActionListener, MouseListener {
+// for translate files
+public class TcpClient extends JFrame implements ActionListener, MouseListener {
 	public ChatBox cb = null; // depends window
-	private Socket sk = null;
-	private DataInputStream dis = null;
-	private DataOutputStream dos = null;
-
-	private JPanel jpFrame = null;
+//	private JPanel jpFrame = null;
 	private JPanel jpFileList = null;
 	private JScrollPane jspList = null;
 	private JButton jbtnSelect = null;
 	private JButton jbtnRemove = null; // 移除
 	private JButton jbtnSend = null;
-	private JPanel jpSouth;
+	private JPanel  jpSouth;
 	
-	public Thread recvThread = null;
-	private String recvConfirm = null;
-	private boolean isRunning = false;
-
-	short checkboxSz = 0;
-	short FILE_MAX_NUM = 10;
-	Checkbox checkBoxs[] = new Checkbox[FILE_MAX_NUM];
-	File files[] = new File[FILE_MAX_NUM];
-
+	private short 	checkboxNum = 0;
+	private short 	FILE_MAX_NUM = 10;
+	private Checkbox checkBoxs[] = null;
+	private String[] sendFileNames = null;
+	private File[] filesTosSend = null;
+	public  File[]  filesToRecv = null;
+	
+	//private boolean waiting = true;
 	// public static void main(String[] args) {
 	// new TcpClient();
 	// }
@@ -68,38 +67,6 @@ public class TcpClient extends JFrame implements Runnable, ActionListener, Mouse
 	public TcpClient() {
 
 		launch();
-		isRunning = false;
-	}
-
-	public TcpClient(Socket s) {
-		sk = s;
-		initStream();
-		launch();
-		isRunning = false;
-	}
-
-	private void initStream() {
-		MainManage.print("initStream");
-		if (sk != null && null == dos) {
-			try {
-				dos = new DataOutputStream(sk.getOutputStream());
-				//System.out.println("dos new");
-			} catch (IOException e) {
-
-				e.printStackTrace();
-			}
-		}
-
-		if (sk != null && null == dis) {
-			try {
-				dis = new DataInputStream(sk.getInputStream());
-				//System.out.println("dis new");
-			} catch (IOException e) {
-
-				e.printStackTrace();
-			}
-		}
-
 	}
 
 	private void launch() {
@@ -136,11 +103,30 @@ public class TcpClient extends JFrame implements Runnable, ActionListener, Mouse
 				// System.exit(0);
 			}
 		});
-
+		sendFileNames = new String[FILE_MAX_NUM];
+		checkBoxs = new Checkbox[FILE_MAX_NUM];
+		filesTosSend = new File[FILE_MAX_NUM];
+		filesToRecv = new File[FILE_MAX_NUM];
 		// setVisible(true);
 
 	}
-
+	private void JpFileListAddBar(JProgressBar jpbar){
+		jpFileList.add(jpbar);
+		this.validate();
+		this.repaint();
+	}
+	private void JpFileListRemoveBar(JProgressBar jpbar){
+		jpFileList.remove(jpbar);
+		this.validate();
+		this.repaint();
+		//this.setVisible(true);
+	}
+	public String getFileName(int i) {
+		if(i < 0 || i >= FILE_MAX_NUM)
+			return null;
+		return sendFileNames[i];
+		
+	}
 	@Override
 	public void mouseReleased(MouseEvent e) {
 
@@ -157,26 +143,28 @@ public class TcpClient extends JFrame implements Runnable, ActionListener, Mouse
 
 			if (flag == JFileChooser.APPROVE_OPTION) {
 				file = fileChooser.getSelectedFile(); // 获取File对象
-			} else {
+			} 
+			else {
 				return;
 			}
 
 			// MainManage.print(file.getAbsolutePath());
 
-			if (checkboxSz >= checkBoxs.length)
+			if (checkboxNum >= checkBoxs.length)
 				return;
 
 			Checkbox ck = new Checkbox(file.getAbsolutePath());
 			ck.setState(true);
 			MainManage.print(ck.getLabel());
 			jpFileList.add(ck, Checkbox.LEFT_ALIGNMENT);
-			checkBoxs[checkboxSz] = ck;
-			files[checkboxSz] = file;
-			checkboxSz++;
+			checkBoxs[checkboxNum] = ck;
+			filesTosSend[checkboxNum] = file;
+			sendFileNames[checkboxNum] = file.getName();
+			checkboxNum++;
 			// jpFileList.validate();//jpFileList.updateUI();
 			validate();
 			jpFileList.repaint();
-			// repaint();
+			 repaint();
 
 		} else if (e.getSource() == jbtnRemove) {
 			MainManage.print("remove...");
@@ -186,16 +174,19 @@ public class TcpClient extends JFrame implements Runnable, ActionListener, Mouse
 				if (ckb != null && ckb.getState()) {
 					jpFileList.remove(ckb);
 					checkBoxs[i] = null;
-					files[i] = null;
-					// validate();
-					jpFileList.revalidate();
+					filesTosSend[i] = null;
+					sendFileNames[i] = null; 
+					checkboxNum--;
+					validate();
+					//jpFileList.revalidate();
 
-					jpFileList.updateUI();//
-					jpFileList.repaint();
-					// repaint();
+					//jpFileList.updateUI();//
+					//jpFileList.repaint();
+					 repaint();
 				}
 			}
 		} else if (e.getSource() == jbtnSend) {
+			
 			String ipStr = cb.getClientAddr().toString();
 			ipStr = ipStr.substring(1);
 			if(ipStr.equals(MainManage.getHostIp())== true ) {
@@ -203,28 +194,20 @@ public class TcpClient extends JFrame implements Runnable, ActionListener, Mouse
 				return;
 			}
 		
-		
 			MainManage.print("send files reqMsg ...");
 			int i = 0;
 			for (; i < checkBoxs.length; i++) {
 				Checkbox ckb = checkBoxs[i];
-				if (ckb != null)
-					break;
+				if(ckb != null && ckb.getState()) {
+					MainManage.reqSendFileMsg(cb.udpClient, sendFileNames[i] + ":" + i);
+				}
+				//if (ckb != null)
+				//	break;
 			}
-			if (i >= checkBoxs.length) { // no file to send
-				return;
-			}
-			Random rnd = new Random();
-			recvConfirm = rnd.nextInt() + "";
-			// jbtnSend.setEnabled(false);
-			MainManage.reqSendFileMsg(cb.udpClient, recvConfirm);
+			
 		}
 		// System.out.println("selectFile");
-
-	}
-
-	public String getRecvConfirm() {
-		return recvConfirm;
+		print("file count " + checkboxNum);
 	}
 
 	@Override
@@ -236,35 +219,6 @@ public class TcpClient extends JFrame implements Runnable, ActionListener, Mouse
 		setVisible(show);
 	}
 
-	public Socket getSk() {
-		return sk;
-	}
-
-	public void setSk(Socket s) {
-		if (null == sk) {
-			this.sk = s;
-			// MainManage.print("sk = " + s);
-		}
-
-		initStream();
-	}
-
-	public DataInputStream getDis() {
-		return dis;
-	}
-
-	public void setDis(DataInputStream dis) {
-		this.dis = dis;
-	}
-
-	public DataOutputStream getDos() {
-		return dos;
-	}
-
-	public void setDos(DataOutputStream dos) {
-		this.dos = dos;
-	}
-
 	public ChatBox getChatBox() {
 		return cb;
 	}
@@ -273,18 +227,38 @@ public class TcpClient extends JFrame implements Runnable, ActionListener, Mouse
 		cb = chatBox;
 	}
 
-public Socket connect() {
-		if (sk != null)
-			return sk;
+	public Socket connectAndSendFile(UdpClient uc, int i) {
+			
+		if(uc == null ) 
+			return null;
+		if(i < 0 || i > FILE_MAX_NUM) 
+			return null;
+		Socket sk = null;
 		
 		try {
-			String ipStr = cb.getClientAddr().toString();
-			ipStr = ipStr.substring(1);
+			String ipStr = uc.clientAddr.toString();
+			
+			if(ipStr == null) return null;
+
 			if(ipStr.equals(MainManage.getUdpAddr().toString()) == true) {
-				MainManage.print("can not connect self" + ipStr);
+				print("can not connect self" + ipStr);
 				return null;
 			}
+			ipStr = ipStr.substring(1);
+			
 			sk = new Socket(ipStr, TcpServ.getPort());
+			
+//			try {
+//			//print("sleep wait a min");
+//			Thread.sleep(100);
+//		} catch (InterruptedException e) {
+//			return;
+//			//e.printStackTrace();
+//		}
+			sendFileImpl sender = new sendFileImpl(sk, i);
+			print("send files start");
+			new Thread(sender).start();
+			
 		} catch (UnknownHostException e) {
 	
 			//e.printStackTrace();
@@ -293,140 +267,129 @@ public Socket connect() {
 			//e.printStackTrace();
 			return null;
 		}
-		initStream();
-		recvThread = new Thread(this);
-		recvThread.start();
-		TCPClientManage.addTClient(sk.getInetAddress().toString(), this);
+		
+	//	TCPClientManage.addTClient(sk.getInetAddress().toString(), this);
 		return sk;
-}
+	}
 
-	public synchronized void sendFiles() {
-		// connect();
-		if (null == sk) {
-			MainManage.print("sk == null,send file fail");
-			return;
+	public File getFilesRecv(int i) {
+		if(i < 0 || i >= FILE_MAX_NUM) 
+			return null;
+		return filesToRecv[i];
+	}
+
+	public boolean setFilesRecv(String fileName, int i) {
+		if(i < 0 || i >= FILE_MAX_NUM) 
+			return false;
+		
+		filesToRecv[i] = getSavePath(fileName);
+		return true;
+	}
+	
+	private File getSavePath(String fileName) {
+	
+		//print("Save oooo");
+		FileDialog fileDia = new FileDialog(this, "SAVE FILE", FileDialog.SAVE);
+		fileDia.setDirectory("~"+File.separator);
+		fileDia.setFile(fileName);
+		fileDia.setVisible(true);
+		
+		File file = null;
+		if(fileDia.getFile() != null)
+			fileName = fileDia.getFile();
+		String dir = fileDia.getDirectory();
+		if(null == dir)
+			dir = "~" + File.separator;
+		print("i will Received " + fileName);
+		file = new File(dir, fileName);
+		
+		return file;
+	}
+	
+	public recvImpl getRecvImpl(Socket sk) {
+		return new recvImpl(sk);
+	}
+
+	class recvImpl implements Runnable {
+	
+		Socket sket = null;
+		DataInputStream dis = null;
+		
+		File fileToRecv = null;
+		recvImpl(Socket sk) {
+			sket = sk;
 		}
+	
+		private void close() {
+			try {
 
-		for (int i = 0; i < checkBoxs.length; i++) {
-			Checkbox ckb = checkBoxs[i];
-			if (ckb != null && ckb.getState()) {
-				File file = files[i];
-				try {
-					sendFile(file);
-					jpFileList.remove(ckb);
-					checkBoxs[i] = null;
-				} catch (Exception e) {
-
-					e.printStackTrace();
+				if (dis != null) {
+					dis.close();
+					dis = null;
 				}
-			}
-		}
-	}
-
-	public void sendFile(File selectedFile) throws Exception {
-		if (dos == null) {
-			System.out.println("sorry dos = null");
-			return;
-		}
-		// Get the size of the file
-		long length = selectedFile.length();
-		MainManage.print("file len: " + length);
-		if (length > Integer.MAX_VALUE) {
-			throw new IOException("Could not completely read file "
-					+ selectedFile.getName() + " as it is too long (" + length
-					+ " bytes, max supported " + Integer.MAX_VALUE + ")");
-		}
-
-		// Create the byte array to hold the file data
-
-		// now we start to send the file meta info.
-
-		dos.writeUTF(selectedFile.getName());
-		dos.flush();
-		dos.writeLong(length);
-		dos.flush();
-
-		// end comment
-		DataInputStream fis = new DataInputStream(new FileInputStream(
-				selectedFile));
-
-		byte[] bytes = new byte[2048];
-
-		// Read in the bytes
-		int offset = 0;
-		int numRead = 0;
-		int fsize = (int) length;
-		while (offset < fsize
-				&& (numRead = fis.read(bytes, 0, bytes.length)) >= 0) {
-			// pData.setData(bytes, numRead);
-			dos.write(bytes, 0, numRead);
-			dos.flush();
-			offset += numRead;
-			float precent = 100.0f * ((float) offset) / ((float) fsize);
-			MainManage.print("send " + precent + "%");
-			// setProgress((int)precent);
-		}
-		dos.flush();
-		System.out.println("total send bytes = " + offset);
-		// Ensure all the bytes have been read in
-		if (offset < fsize) {
-			throw new IOException("Could not completely transfer file "
-					+ selectedFile.getName());
-		}
-		fis.close();
-	}
-
-	public void close() {
-		try {
-			if (sk != null) {
-				sk.close();
-				sk = null;
-			}
-			if (dis != null) {
-				dis.close();
-				dis = null;
-			}
-			if (dos != null) {
-				dos.close();
-				dos = null;
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public boolean getThrIsRunning() {
-		return isRunning;
-	}
-
-	@Override
-	public synchronized void run() {
-		if (dis == null)
-			return;
-		MainManage.print("TcpClient recv start:");
-		isRunning = true;
-		String fileName = null;
-		long fileLength = 0;
-		while (isRunning) {
-
-			try {
-				fileName = dis.readUTF();
-
-				fileLength = (int) dis.readLong(); // number of total bytes
+				if (sket != null) {
+					sket.close();
+					sket = null;
+				}
 			} catch (IOException e) {
-				continue;
-				// e.printStackTrace();
+				e.printStackTrace();
 			}
-			System.out.println("Received File Name = " + fileName);
-			System.out.println("Received File size = " + fileLength / 1024
-					+ "KB");
-
-			File file = new File(fileName);
-			BufferedOutputStream output = null;
+		}
+		
+		public void run() {
+			// 接收文件线程
 			try {
-				output = new BufferedOutputStream(new FileOutputStream(file));
-			} catch (FileNotFoundException e) {
+				dis = new DataInputStream(sket.getInputStream());
+			} catch (IOException e1) {
+				
+				e1.printStackTrace();
+			}
+			if (dis == null) {
+				print("dis == null");
+				return;
+			}
 
+			print("TcpClient recv start:");
+			
+			long fileLength = 0;
+			int i = 0;
+			
+			print("pre is oky");
+			try {
+				fileLength = (int) dis.readLong(); // number of total bytes
+				print("Received File size  = " + fileLength / 1024 + "KB");
+				i = dis.readInt();
+			} catch (IOException e) {
+				return;
+				// e.printStackTrace();
+			}	
+			print("index = " + i);
+			
+			if(i < 0 || i > FILE_MAX_NUM) {
+				print("error index ");
+				return;
+			}
+			fileToRecv = filesToRecv[i];
+			if(fileToRecv == null) 
+				return;
+			BufferedOutputStream output = null;
+			JProgressBar jpbar = new JProgressBar(JProgressBar.HORIZONTAL);
+			//jpbar.setBackground(Color.GRAY);
+			jpbar.setMaximum(100);
+			//jpbar.setString(fileToRecv.getName());
+			jpbar.setName("---------");
+			jpbar.setBorderPainted(true);
+			jpbar.setMinimum(0);
+			//jpbar.setVisible(true);
+			JpFileListAddBar(jpbar);
+		
+		
+			try {
+				output = new BufferedOutputStream(new FileOutputStream(fileToRecv));
+				
+				
+			} catch (FileNotFoundException e) {
+	
 				e.printStackTrace();
 			}
 
@@ -438,40 +401,59 @@ public Socket connect() {
 				try {
 					numReadBytes = dis.read(content);
 				} catch (IOException e) {
-
+	
 					e.printStackTrace();
 				}
-
+	
 				if (numReadBytes > 0) {
 					try {
 						output.write(content, 0, numReadBytes);
 					} catch (IOException e) {
-
+	
 						e.printStackTrace();
 					}
 					offset += numReadBytes;
-					float precent = 100.0f * ((float) offset)
-							/ ((float) fileLength);
-					MainManage.print("recv " + precent + "%");
+					float precent = 100.0f * ((float) offset) / ((float) fileLength);
+					print("recv " + precent + "%");
+					jpbar.setValue((int)precent);
 					// setProgress((int) precent);
 				}
-
+				else if(numReadBytes < 0) {
+					print("end of file");
+					break;
+				}
 			}
 			// System.out.println("numReadBytes = " + numReadBytes);
-			System.out.println("offset = " + offset);
+			
 			if (offset < fileLength) {
 				try {
+					print("left data");
 					numReadBytes = dis.read(content);
+					if (numReadBytes > 0) {
+						try {
+							output.write(content, 0, numReadBytes);
+						} catch (IOException e) {
+	
+							e.printStackTrace();
+						}
+						offset += numReadBytes;
+						float precent = 100.0f * ((float) offset) / ((float) fileLength);
+						print("recv " + precent + "%");
+						jpbar.setValue((int)precent);
+					}
 				} catch (IOException e) {
-
+	
 					e.printStackTrace();
 				}
-				System.out.println("numReadBytes = " + numReadBytes);
-				System.out.println("File content error at server side");
-			} else {
-				System.out.println("File Receive Task has done correctly");
+				
+				//System.out.println("numReadBytes = " + numReadBytes);
+				print("File content error at server side");
+			} 
+			else {
+				print("File Receive Task has done correctly");
 			}
-
+			
+			System.out.println("total revc bytes = " + offset);
 			if (output != null) {
 				try {
 					output.close();
@@ -480,34 +462,139 @@ public Socket connect() {
 				}
 				output = null;
 			}
+			
+			print("recv thread end");
+			
+			close();
+			JpFileListRemoveBar(jpbar);
+		}
+	}
+	public sendFileImpl sendFileImpl(Socket sk, int i) {
+		return new sendFileImpl(sk, i); 
+	}
+	class sendFileImpl implements Runnable {
+		
+		Socket sket = null;
+		
+		DataOutputStream dos = null;
+		private int file_index = 0;
+		private File fileToSend;
+		
+		sendFileImpl(Socket sk, int i) {
+			this.sket = sk;
+			this.file_index = i;
 
 		}
-		close();
-		MainManage.print("recv thread end");
-	}
+		
+		public synchronized void sendFile(File file) throws Exception {
+			dos = new DataOutputStream(sket.getOutputStream());
+			
+			if(null == file || dos == null) 
+				return;
+			
+			synchronized (this) {
+				// Get the size of the file
+				long length = file.length();
+				print("file len: " + length);
+				if (length > Integer.MAX_VALUE) {
+					throw new IOException("Could not completely read file "
+							+ file.getName() + " as it is too long (" + length
+							+ " bytes, max supported " + Integer.MAX_VALUE + ")");
+				}
+				// now we start to send the file meta info.
+		
+				dos.writeLong(length);
+				dos.flush();
+				dos.writeInt(file_index);
+				dos.flush();
+				// end comment
+				DataInputStream fis = new DataInputStream(new FileInputStream(file));
+		        ProgressMonitorInputStream pm = 
+		                  new ProgressMonitorInputStream(TcpClient.this,"Reading a file" + file.getAbsolutePath(),fis);
+		              // 读取文件，如果总耗时超过2秒，将会自动弹出一个进度监视窗口。
+		              //   显示已读取的百分比。
+				byte[] bytes = new byte[2048];
+		
+				// Read in the bytes
+				int offset = 0;
+				int numRead = 0;
+				int fsize = (int) length;
+				while (offset < fsize
+						&& (numRead = pm.read(bytes, 0, bytes.length)) >= 0) {
+					// pData.setData(bytes, numRead);
+					dos.write(bytes, 0, numRead);
+					dos.flush();
+					offset += numRead;
+					float precent = 100.0f * ((float) offset) / ((float) fsize);
+					MainManage.print("send " + precent + "%");
+					// setProgress((int)precent);
+				}
+				dos.flush();
+				//System.out.println("total send bytes = " + offset);
+				// Ensure all the bytes have been read in
+				if (offset < fsize) {
+					throw new IOException("Could not completely transfer file "
+							+ file.getName());
+				}
+				pm.close();
+				fis.close();
+			}
+			close();
+		}
+		
+		private void close() {
+			try {
+				if (dos != null) {
+					dos.close();
+					dos = null;
+				}				
+				if (sket != null) {
+					sket.close();
+					sket = null;
+				}
 
-	@Override
+
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		@Override
+		public void run() {
+			fileToSend = filesTosSend[file_index];
+			if(fileToSend == null) 
+				return;
+			try {
+				sendFile(fileToSend);
+			} catch (Exception e) {
+				
+				e.printStackTrace();
+			}
+			close();
+		}
+	
+	}
+	
 	public void mouseClicked(MouseEvent e) {
-		// TODO Auto-generated method stub
+	
 
 	}
 
-	@Override
 	public void mousePressed(MouseEvent e) {
-		// TODO Auto-generated method stub
-
+	
 	}
 
-	@Override
 	public void mouseEntered(MouseEvent e) {
-		// TODO Auto-generated method stub
-
+	
+		
 	}
 
-	@Override
 	public void mouseExited(MouseEvent e) {
-		// TODO Auto-generated method stub
-
+	
 	}
 
+	void print(Object o) {
+		//System.out.println(o);
+	}
 }
+
+

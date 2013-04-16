@@ -8,6 +8,7 @@ import java.net.*;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import view.FriendList;
+import view.LoginFrame;
 
 import com.MsgObj;
 import com.TcpServ;
@@ -23,7 +24,7 @@ public class MainManage implements Runnable {
 	
 	public static boolean noExit = true;
 	private InetAddress broadcastAddress;
-	private String ownerSex;
+	private String ownerSex = "gril";
 	private static Thread friendListThread = null;
 	Thread tcpSvrTr = null;
 	protected static int UDPport = 8888; // 默认
@@ -31,7 +32,8 @@ public class MainManage implements Runnable {
 	public static InetAddress loAddr;
 
 	public static void main(String args[]) {
-		new MainManage();
+		
+		//new MainManage();
 	}
 
 	public static DatagramSocket getUdpServerSock() {
@@ -58,15 +60,14 @@ public class MainManage implements Runnable {
 		MainManage.nickname = nickname;
 	}
 
-	public MainManage() {
+	public MainManage(String nickName, String sex,int port) {
+		nickname = nickName;
+		this.ownerSex = sex;
 		launch();
 	}
-
-	public MainManage(int port) {
-		UDPport = port;
+	public  MainManage() {
 		launch();
 	}
-
 	public void launch() {
 
 		try {
@@ -77,16 +78,7 @@ public class MainManage implements Runnable {
 			loAddr = InetAddress.getByName("127.0.0.1");
 			broadcastAddress = InetAddress.getByName("255.255.255.255");
 			 print("lo: " + loAddr);
-
-			nickname = JOptionPane.showInputDialog("Entre your nickname please");
-			if (nickname == null || 0 == nickname.length())
-				nickname = UdpAddr.toString();
-			else {
-				nickname = nickname + " - "
-						+ UdpAddr.getHostAddress().toString();
-			}
-
-			this.ownerSex = "gril";
+	
 			// print("my name is " + nickname);
 		} catch (SocketException e) {
 			// e.printStackTrace();
@@ -97,6 +89,15 @@ public class MainManage implements Runnable {
 		} catch (UnknownHostException e1) {
 			e1.printStackTrace();
 		}
+		 //JOptionPane.showInputDialog("Entre your nickname please");
+	
+		if (nickname == null || 0 == nickname.length())
+			nickname = UdpAddr.toString();
+		else {
+			nickname = nickname + " - "
+					+ UdpAddr.getHostAddress().toString();
+		}
+
 		
 		FriendList friendLists = FriendList.getFriendListInstance();
 
@@ -111,12 +112,21 @@ public class MainManage implements Runnable {
 		// print("sendBroadcast");
 		udpSendMsgObj(m, broadcastAddress);
 
-		friendLists.setVisible(true);
 		friendListThread = new Thread(friendLists);
 		friendListThread.start();
-		TcpServ tSvr = new TcpServ();
+		friendLists.setVisible(true);
+		TcpServ tSvr = new TcpServ(UDPport);
 		tcpSvrTr = new Thread(tSvr);
 		tcpSvrTr.start();
+		
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		if(UDPClientManage.hmJlb.size() == 0) {
+			udpSendMsgObj(m, broadcastAddress);//再广播一次以防万一
+		}
 	}
 
 	public static void stopFriThread() {
@@ -200,11 +210,6 @@ public class MainManage implements Runnable {
 			serverSK = null;
 		}
 	}
-
-	public static void print(Object o) {
-
-		//System.out.println(o);
-	}
 	
 	public static void cleanClient(String addrStr) {
 		JLabel jl = ChatBoxManage.getHmLabel(addrStr);
@@ -244,5 +249,11 @@ public class MainManage implements Runnable {
 				System.exit(1);
 			}
 		}
+	}
+	
+	
+	public static void print(Object o) {
+
+		//System.out.println(o);
 	}
 }
