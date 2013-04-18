@@ -1,4 +1,9 @@
 package com.manage;
+import com.MsgObj;
+import com.TcpServ;
+import com.UdpClient;
+import com.UdpMsgParseThread;
+import com.interfaces.MsgType;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -10,32 +15,37 @@ import javax.swing.JOptionPane;
 import view.FriendList;
 import view.LoginFrame;
 
-import com.MsgObj;
-import com.TcpServ;
-import com.UdpClient;
-import com.UdpMsgParseThread;
-import com.interfaces.MsgType;
-
 public class MainManage implements Runnable {
 	protected static String ownerIP; // use ip as id
-	public static String nickname;
+	public static String nickname = null;
 
 	public static DatagramSocket serverSK;
 	
 	public static boolean noExit = true;
 	private InetAddress broadcastAddress;
-	private String ownerSex = "gril";
+	private static String ownerSex = "gril";
+
 	private static Thread friendListThread = null;
 	Thread tcpSvrTr = null;
 	protected static int UDPport = 8888; // 默认
 	private static InetAddress UdpAddr;
 	public static InetAddress loAddr;
 
-	public static void main(String args[]) {
-		
-		//new MainManage();
-	}
+//	public static void main(String args[]) {
+//		
+//		//new MainManage();
+//	}
 
+	public MainManage(String nickName, String sex,int port) {
+	
+			nickname = nickName;
+			this.ownerSex = sex;
+			UDPport = port;
+			launch();
+	}
+	public  MainManage() {
+		launch();
+	}
 	public static DatagramSocket getUdpServerSock() {
 		return serverSK;
 	}
@@ -59,20 +69,20 @@ public class MainManage implements Runnable {
 	public static void setNickname(String nickname) {
 		MainManage.nickname = nickname;
 	}
+	
+	public static String getOwnerSex() {
+		return ownerSex;
+	}
 
-	public MainManage(String nickName, String sex,int port) {
-		nickname = nickName;
-		this.ownerSex = sex;
-		launch();
-	}
-	public  MainManage() {
-		launch();
-	}
+//	public void setOwnerSex(String ownerSex) {
+//		this.ownerSex = ownerSex;
+//	}
+
+
 	public void launch() {
 
 		try {
 			serverSK = new DatagramSocket(UDPport);
-			
 			UdpAddr = InetAddress.getLocalHost();
 			ownerIP = UdpAddr.getHostAddress();
 			loAddr = InetAddress.getByName("127.0.0.1");
@@ -82,8 +92,7 @@ public class MainManage implements Runnable {
 			// print("my name is " + nickname);
 		} catch (SocketException e) {
 			// e.printStackTrace();
-			JOptionPane.showMessageDialog(null, "Port " + UDPport
-					+ " has been used！");
+			JOptionPane.showMessageDialog(null, "Port " + UDPport + " has been used！");
 			System.exit(0);
 
 		} catch (UnknownHostException e1) {
@@ -94,8 +103,7 @@ public class MainManage implements Runnable {
 		if (nickname == null || 0 == nickname.length())
 			nickname = UdpAddr.toString();
 		else {
-			nickname = nickname + " - "
-					+ UdpAddr.getHostAddress().toString();
+			nickname = nickname + " - " + UdpAddr.getHostAddress().toString();
 		}
 
 		

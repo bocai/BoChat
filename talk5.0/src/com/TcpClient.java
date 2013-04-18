@@ -110,6 +110,7 @@ public class TcpClient extends JFrame implements ActionListener, MouseListener {
 		// setVisible(true);
 
 	}
+	
 	private void JpFileListAddBar(JProgressBar jpbar){
 		jpFileList.add(jpbar);
 		this.validate();
@@ -540,6 +541,7 @@ public class TcpClient extends JFrame implements ActionListener, MouseListener {
 				fis.close();
 			}
 			close();
+			checkBoxs[file_index].setLabel( file.getName() + " send over!");
 		}
 		
 		private void close() {

@@ -84,8 +84,11 @@ public class FriendList extends JFrame implements Runnable, ActionListener, Mous
 		}
 		// print("ucSex " + uc.sex);
 		String sex = uc.sex;
-		if (sex == null)
+		if (sex == null) {
 			sex = "gril";
+			uc.sex = sex;
+		}
+			
 		if (sex.equalsIgnoreCase("gril") == true)
 			icon = new ImageIcon("image/mm.jpg");
 		else

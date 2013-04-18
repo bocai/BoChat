@@ -25,7 +25,7 @@ public class LoginFrame extends JFrame{
 	JPanel jpSouth = new JPanel();
 	
 	JButton yes_btn = new JButton("Ok");
-	JButton no_btn   = new JButton("Cancel"); //取消
+	JButton no_btn   = new JButton("Clean"); //取消
 	JButton quit_btn = new JButton("Quit");
 	TextField tFieldName = new TextField(30);
 	
@@ -85,7 +85,7 @@ public class LoginFrame extends JFrame{
 			
 			public void mouseClicked(MouseEvent click) {
 				
-				Strar();
+				cleanTf();
 			}
 		});
 		quit_btn.addMouseListener(new MouseAdapter() {
@@ -101,7 +101,9 @@ public class LoginFrame extends JFrame{
 	}
 	private void loadInput() {
 		nickName = tFieldName.getText();
-		port = Integer.parseInt(tFieldPort.getText());
+		int portTmp = Integer.parseInt(tFieldPort.getText());
+		if(portTmp > 1024 && portTmp < 65535) 
+			port = portTmp;
 		if(rad_boy.isSelected()) {
 			sex = "boy";
 		}
@@ -110,7 +112,9 @@ public class LoginFrame extends JFrame{
 		}
 		
 	}
-	
+	private void cleanTf() {
+		tFieldName.setText("");
+	}
 	// listen Entre
 	private class txtListener implements ActionListener {
 		public void actionPerformed(ActionEvent e) {
@@ -127,9 +131,8 @@ public class LoginFrame extends JFrame{
 	}
 	public static void main(String[] args) {
 		
-		 LoginFrame lg = new LoginFrame();
+		 new LoginFrame();
 		 
-		
 	}
 
 }

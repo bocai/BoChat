@@ -41,9 +41,9 @@ public class UdpMsgParseThread implements Runnable {
 
 	void responseMsg(MsgObj m) {
 		m.setSender(MainManage.nickname);
-		// m.setSender(m.getGetter());
+		m.setSex(MainManage.getOwnerSex());
 		m.setMsgtype(MsgType.MSG_RESPONSE);// 回应
-
+	
 		MainManage.udpSendMsgObj(m, dp.getAddress());
 	}
 
@@ -234,7 +234,7 @@ public class UdpMsgParseThread implements Runnable {
 				if (uc == null) {
 					dealConnectMsg(m);
 				}
-				responseMsg(m);// cb.showWindow();
+				responseMsg(m);
 				break;
 
 			case MsgType.MSG_RESPONSE:

@@ -19,9 +19,9 @@ public class TcpServ implements Runnable {
 	ServerSocket ss = null;
 	private static int port = 8888;
 
-	public static void main(String[] args) {
-
-	}
+//	public static void main(String[] args) {
+//
+//	}
 	public TcpServ() {
 		
 	}
